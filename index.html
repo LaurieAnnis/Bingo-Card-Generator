@@ -57,7 +57,7 @@
     color: var(--ink);
   }
 
-  textarea { min-height: 220px; resize: vertical; line-height: 1.5; }
+  textarea { min-height: 260px; resize: vertical; line-height: 1.5; }
 
   input[type="text"]:focus,
   textarea:focus {
@@ -179,7 +179,7 @@
 
   <div class="controls">
     <h1>Bingo Card Generator</h1>
-    <p>Type a title and your phrases (one per line). Shuffle reorders only the card, not your list.</p>
+    <p>Paste a pool of phrases (75 is a good size), one per line. Each card draws a random selection from the pool. Edit the pool any time, then Shuffle to draw a fresh card.</p>
 
     <div class="field">
       <label for="title">Card title</label>
@@ -188,11 +188,11 @@
 
     <label class="toggle" for="freeSpace">
       <input type="checkbox" id="freeSpace">
-      Free space in the center (needs 24 phrases instead of 25)
+      Free space in the center (draws 24 instead of 25)
     </label>
 
     <div class="field">
-      <label for="phrases">Phrases <span class="hint">— one per line</span></label>
+      <label for="phrases">Phrase pool <span class="hint">— one per line</span></label>
       <textarea id="phrases" spellcheck="true"></textarea>
       <div class="count" id="count"></div>
     </div>
@@ -215,12 +215,21 @@
 
 <script>
   const SAMPLE = [
-    "Free coffee","Someone is late","Phone rings","Talks about the weather",
-    "New face in the room","Forgot a name","Long pause","Loud sneeze",
-    "Dog barks outside","Out of paper","Wrong room","Mentions a deadline",
-    "Asks a question","Snack appears","Power flickers","Tells a joke",
-    "Spills a drink","Checks the clock","Quotes a movie","Hums a tune",
-    "Finds a typo","Waves hello","Drops something","Big yawn","Standing ovation"
+    "Free coffee","Someone is late","Phone rings","Talks about the weather","New face in the room",
+    "Forgot a name","Long awkward pause","Loud sneeze","Dog barks outside","Out of paper",
+    "Wrong meeting room","Mentions a deadline","Asks a question","Snack appears","Power flickers",
+    "Tells a joke","Spills a drink","Checks the clock","Quotes a movie","Hums a tune",
+    "Finds a typo","Waves hello","Drops something","Big yawn","Standing ovation",
+    "Asks if the screen is visible","Microphone is muted","Echo on the call","Cat on the keyboard","Doorbell rings",
+    "Take this offline","Promises to circle back","Someone reboots the router","Coffee mug is empty","Whiteboard marker is dry",
+    "Just a quick question","Meeting runs long","Polite you-go-ahead","Background noise","Frozen video feed",
+    "Asks to repeat that","Slide won't advance","Laptop battery warning","Promises a follow-up","Lost the Wi-Fi",
+    "Two people talk at once","Per my last email","Birthday cake in the kitchen","Printer jams","Parking-lot the idea",
+    "Shares the wrong window","Notification ding","Any other business","Pen runs out of ink","Chair squeaks",
+    "Hunting for the right file","Calendar conflict","Happy Friday","Construction noise outside","Asks if they can be heard",
+    "Forgotten password","Wants to align on it","New acronym appears","Late lunch order","Thanks everyone",
+    "Screen share lag","Mentions a hard stop","Keyboard clacking","Circle the wagons","Snack runs out",
+    "A quick five-minute thing","Someone's on mute again","Coffee spill on desk","Reviews action items","Regroup tomorrow"
   ];
 
   const titleInput = document.getElementById("title");
@@ -230,11 +239,11 @@
   const grid = document.getElementById("grid");
   const countEl = document.getElementById("count");
 
-  // The card's display order, kept separate from the textarea so shuffling
-  // never rewrites the list.
+  // The drawn card, kept separate from the pool. Editing the pool does not
+  // disturb it; Shuffle draws a fresh card.
   let displayOrder = [];
 
-  function getPhrases() {
+  function getPool() {
     return phrasesInput.value
       .split("\n")
       .map(s => s.trim())
@@ -280,42 +289,33 @@
 
   function updateCount() {
     const need = freeToggle.checked ? 24 : 25;
-    const n = getPhrases().length;
-    if (n === need) {
-      countEl.textContent = n + " phrases \u2014 ready.";
+    const n = getPool().length;
+    if (n >= need) {
+      countEl.textContent = n + " in the pool \u2014 each card draws " + need + " at random.";
       countEl.classList.remove("warn");
-    } else if (n < need) {
-      countEl.textContent = n + " phrases \u2014 add " + (need - n) +
-        " more for a full card (blank cells until then).";
-      countEl.classList.add("warn");
     } else {
-      countEl.textContent = n + " phrases \u2014 only the first " + need + " are placed.";
+      countEl.textContent = n + " in the pool \u2014 a card needs " + need +
+        ", so it will have " + (need - n) + " blank cell(s). Add more phrases.";
       countEl.classList.add("warn");
     }
   }
 
-  // Edits to the list reset the card to the typed order.
-  function syncFromList() {
-    displayOrder = getPhrases();
-    renderGrid();
-  }
-
-  // Shuffle reorders the card only, pulling a fresh shuffle of the current list.
+  // Draw a fresh card: a random selection from the current pool.
   function shuffle() {
-    displayOrder = shuffled(getPhrases());
+    displayOrder = shuffled(getPool());
     renderGrid();
   }
 
   document.getElementById("shuffle").addEventListener("click", shuffle);
   document.getElementById("print").addEventListener("click", () => window.print());
   titleInput.addEventListener("input", renderTitle);
-  phrasesInput.addEventListener("input", syncFromList);
-  freeToggle.addEventListener("change", renderGrid);
+  phrasesInput.addEventListener("input", updateCount);   // edit pool freely; card stays put
+  freeToggle.addEventListener("change", renderGrid);     // reuses the drawn card
 
   // Init
   phrasesInput.value = SAMPLE.join("\n");
   renderTitle();
-  syncFromList();
+  shuffle();   // draw an initial card
 </script>
 </body>
 </html>
