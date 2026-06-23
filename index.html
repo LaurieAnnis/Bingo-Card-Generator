@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bingo Card Generator</title>
+<style>
+  :root {
+    --ink: #15171a;
+    --line: #15171a;
+    --muted: #5c6470;
+    --bg: #eceef1;
+    --panel: #ffffff;
+    --accent: #2f6f4f;
+    --guide: #c4c9d0;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.4;
+  }
+
+  /* ---------- Controls (screen only) ---------- */
+  .controls {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 24px 20px 8px;
+  }
+
+  .controls h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  .controls p { margin: 0 0 18px; color: var(--muted); font-size: 0.9rem; }
+
+  .field { margin-bottom: 16px; }
+
+  .field label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .field .hint { font-weight: 400; color: var(--muted); }
+
+  input[type="text"],
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #c4c9d0;
+    border-radius: 6px;
+    font: inherit;
+    background: var(--panel);
+    color: var(--ink);
+  }
+
+  textarea { min-height: 220px; resize: vertical; line-height: 1.5; }
+
+  input[type="text"]:focus,
+  textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+  }
+
+  .toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
+  .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 6px; }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 16px;
+    border: 1px solid var(--ink);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button.primary { background: var(--ink); color: #fff; }
+  button:hover { filter: brightness(0.95); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .count { font-size: 0.85rem; color: var(--muted); margin: 4px 2px 0; min-height: 1.2em; }
+  .count.warn { color: #b3402a; font-weight: 600; }
+
+  /* ---------- The card / paper ---------- */
+  .page-wrap { display: flex; justify-content: center; padding: 20px 20px 60px; }
+
+  .card {
+    background: #fff;
+    width: 7.5in;          /* letter width minus 0.5in margins each side */
+    height: 10in;          /* letter height minus 0.5in margins top/bottom */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  }
+
+  /* top band: open image area above, title just above the grid */
+  .header { flex: 1; display: flex; flex-direction: column; }
+
+  .image-zone {
+    flex: 1;
+    margin: 0 0.3in 0.12in;
+    border: 1px dashed var(--guide);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aeb4bd;
+    font-size: 0.8rem;
+  }
+
+  .card-title {
+    margin: 0;
+    padding: 0 0.3in 0.18in;
+    font-size: 30pt;
+    font-weight: 800;
+    text-align: center;
+    letter-spacing: 0.5px;
+    word-break: break-word;
+    min-height: 0.5in;
+  }
+
+  /* square grid: 7.5in wide, forced 1:1, anchored at the bottom */
+  .grid {
+    flex: none;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    border-top: 2px solid var(--line);
+    border-left: 2px solid var(--line);
+  }
+
+  .cell {
+    border-right: 2px solid var(--line);
+    border-bottom: 2px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 6px;
+    overflow: hidden;
+    font-size: 12pt;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+  }
+  .cell.empty { color: var(--guide); }
+  .cell.free { font-weight: 800; letter-spacing: 1px; }
+
+  /* ---------- Print ---------- */
+  @media print {
+    @page { size: letter portrait; margin: 0.5in; }
+    body { background: #fff; }
+    .controls { display: none !important; }
+    .page-wrap { padding: 0; }
+    .card { box-shadow: none; }
+    .image-zone { border: none; color: transparent; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="controls">
+    <h1>Bingo Card Generator</h1>
+    <p>Type a title and your phrases (one per line). Shuffle reorders only the card, not your list.</p>
+
+    <div class="field">
+      <label for="title">Card title</label>
+      <input type="text" id="title" value="BINGO" autocomplete="off">
+    </div>
+
+    <label class="toggle" for="freeSpace">
+      <input type="checkbox" id="freeSpace">
+      Free space in the center (needs 24 phrases instead of 25)
+    </label>
+
+    <div class="field">
+      <label for="phrases">Phrases <span class="hint">— one per line</span></label>
+      <textarea id="phrases" spellcheck="true"></textarea>
+      <div class="count" id="count"></div>
+    </div>
+
+    <div class="buttons">
+      <button class="primary" id="shuffle" type="button">Shuffle</button>
+      <button id="print" type="button">Print</button>
+    </div>
+  </div>
+
+  <div class="page-wrap">
+    <div class="card" id="card">
+      <div class="header">
+        <div class="image-zone">Optional image area (screen guide only &mdash; does not print)</div>
+        <h1 class="card-title" id="cardTitle">BINGO</h1>
+      </div>
+      <div class="grid" id="grid"></div>
+    </div>
+  </div>
+
+<script>
+  const SAMPLE = [
+    "Free coffee","Someone is late","Phone rings","Talks about the weather",
+    "New face in the room","Forgot a name","Long pause","Loud sneeze",
+    "Dog barks outside","Out of paper","Wrong room","Mentions a deadline",
+    "Asks a question","Snack appears","Power flickers","Tells a joke",
+    "Spills a drink","Checks the clock","Quotes a movie","Hums a tune",
+    "Finds a typo","Waves hello","Drops something","Big yawn","Standing ovation"
+  ];
+
+  const titleInput = document.getElementById("title");
+  const phrasesInput = document.getElementById("phrases");
+  const freeToggle = document.getElementById("freeSpace");
+  const cardTitle = document.getElementById("cardTitle");
+  const grid = document.getElementById("grid");
+  const countEl = document.getElementById("count");
+
+  // The card's display order, kept separate from the textarea so shuffling
+  // never rewrites the list.
+  let displayOrder = [];
+
+  function getPhrases() {
+    return phrasesInput.value
+      .split("\n")
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+  }
+
+  function shuffled(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function renderTitle() {
+    const t = titleInput.value.trim();
+    cardTitle.textContent = t || "\u00A0";
+  }
+
+  function renderGrid() {
+    const free = freeToggle.checked;
+    grid.innerHTML = "";
+    let p = 0; // pointer into displayOrder
+    for (let i = 0; i < 25; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      if (free && i === 12) {
+        cell.textContent = "FREE";
+        cell.classList.add("free");
+      } else {
+        const phrase = displayOrder[p++];
+        if (phrase !== undefined) {
+          cell.textContent = phrase;
+        } else {
+          cell.classList.add("empty");
+        }
+      }
+      grid.appendChild(cell);
+    }
+    updateCount();
+  }
+
+  function updateCount() {
+    const need = freeToggle.checked ? 24 : 25;
+    const n = getPhrases().length;
+    if (n === need) {
+      countEl.textContent = n + " phrases \u2014 ready.";
+      countEl.classList.remove("warn");
+    } else if (n < need) {
+      countEl.textContent = n + " phrases \u2014 add " + (need - n) +
+        " more for a full card (blank cells until then).";
+      countEl.classList.add("warn");
+    } else {
+      countEl.textContent = n + " phrases \u2014 only the first " + need + " are placed.";
+      countEl.classList.add("warn");
+    }
+  }
+
+  // Edits to the list reset the card to the typed order.
+  function syncFromList() {
+    displayOrder = getPhrases();
+    renderGrid();
+  }
+
+  // Shuffle reorders the card only, pulling a fresh shuffle of the current list.
+  function shuffle() {
+    displayOrder = shuffled(getPhrases());
+    renderGrid();
+  }
+
+  document.getElementById("shuffle").addEventListener("click", shuffle);
+  document.getElementById("print").addEventListener("click", () => window.print());
+  titleInput.addEventListener("input", renderTitle);
+  phrasesInput.addEventListener("input", syncFromList);
+  freeToggle.addEventListener("change", renderGrid);
+
+  // Init
+  phrasesInput.value = SAMPLE.join("\n");
+  renderTitle();
+  syncFromList();
+</script>
+</body>
+</html>
